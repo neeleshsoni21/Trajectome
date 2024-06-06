@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Simulation:
 	def __init__(self, system, output_dir, time_steps, temperature):
-		
+
 		self.system = system
 		self.time_steps = time_steps
 		self.temperature = temperature
@@ -40,7 +40,7 @@ class Simulation:
 		IMP.rmf.add_hierarchy(rmf, self.system.h_root)
 		IMP.rmf.add_restraints(rmf, self.system.restraints)
 		IMP.rmf.add_geometry(rmf, IMP.display.BoundingBoxGeometry(self.system.bb))
-		IMP.rmf.add_geometry(rmf, IMP.display.SphereGeometry(self.system.pbc_sphere))
+		#IMP.rmf.add_geometry(rmf, IMP.display.SphereGeometry(self.system.pbc_sphere))
 
 		# Pair RMF with model using an OptimizerState ("listener")
 		sos = IMP.rmf.SaveOptimizerState(self.model, rmf)

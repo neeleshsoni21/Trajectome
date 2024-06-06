@@ -110,14 +110,20 @@ class ProteinStructure:
 	def setup_residues(self, residues):
 
 		for i, residue in enumerate(residues):
-			
+
+			#print(residue)
+			#Create a particle for the residue
 			particle = IMP.Particle(self.model)
+
+			#All atoms in the residue
 			leaf1 = IMP.atom.get_leaves(residue)
+
 			coordsR = IMP.core.XYZR(leaf1[0]) #Add first atom, mostly this will be N for full atom pdb file
 			
-			residx = IMP.pmi.tools.get_residue_indexes(residue)[0]
 			xyz = coordsR.get_coordinates()
-			radius = self.amino_acid_radii[residue.get_name()]
+			#R_rad = coordsR.get_radius() #Individual atom radius
+
+			radius = self.amino_acid_radii[residue.get_name()] #Entire residue radius
 
 			d = IMP.core.XYZR.setup_particle(
 				particle,
@@ -127,7 +133,10 @@ class ProteinStructure:
 			
 			self.ph.add_child(IMP.atom.Fragment.setup_particle(d))
 			IMP.atom.Mass.setup_particle(d, self.mass)
+
 			self.prb.add_member(d)
+
+			residx = IMP.pmi.tools.get_residue_indexes(residue)[0]
 			d.set_name(f"{self.name}_residue_{residx}")
 
 		return
@@ -142,10 +151,11 @@ class ProteinStructure:
 		if splittup[1] == ".pdb":
 			protein_hierarchy = IMP.atom.read_pdb(self.pdbfile, self.model)
 		elif splittup[1] == ".cif":
-			#protein_hierarchy = IMP.atom.read_mmcif(self.pdbfile, self.model)
+			protein_hierarchy = IMP.atom.read_mmcif(self.pdbfile, self.model)
+			multi_model=False
 
-			protein_hierarchies = IMP.atom.read_multimodel_mmcif(self.pdbfile, self.model)
-			multi_model=True
+			#protein_hierarchies = IMP.atom.read_multimodel_mmcif(self.pdbfile, self.model)
+			#multi_model=True
 		else:
 			raise ValueError(f"Unsupported file format: {self.pdbfile}")
 			logger.error(f"Error reading file {self.pdbfile}")
@@ -159,17 +169,33 @@ class ProteinStructure:
 			residues = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.RESIDUE_TYPE)
 			All_Residues.append(residues)
 
+
+
 		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), IMP.algebra.ReferenceFrame3D())
 		self.prb.set_coordinates_are_optimized(True)
 		self.prb.set_name(self.name + " rb")
+
+		#print(self.name, "Radius init:", IMP.core.XYZR(self.prb.get_particle()))
 		
+		#Define a molecule within a rigid body. In this case it is a protein
 		self.ph = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
 		self.ph.set_name(self.name)
 
 		for residues in All_Residues:
 			self.setup_residues(residues)
 
+		#self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
 		self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
+
+		print(self.name, "Radius init:", IMP.core.XYZR(self.prb.get_particle()))
+
+		print("RadGyr:",IMP.atom.get_radius_of_gyration(self.ph))
+		#IMP.core.XYZR.setup_particle(self.prb.get_particle(),50)
+		#self.prb.set_radius(50)
+
+		#Rotational diffusion ceofficient is calculated automatically considering radius. However, radius is not correctly identified
+		#self.rotdif = IMP.atom.RigidBodyDiffusion.setup_particle(self.prb)
+		
 
 		return
 

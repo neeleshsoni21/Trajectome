@@ -30,7 +30,7 @@ class System:
 		self.interactions = []
 		self.restraints = []
 		self.L = L
-		self.R = R
+		#self.R = R
 		self.K_BB = K_BB
 
 		self.create_bounding_box_and_pbc()
@@ -38,7 +38,7 @@ class System:
 
 	def create_bounding_box_and_pbc(self):
 		# PBC cytoplasm bounding sphere:
-		self.pbc_sphere = IMP.algebra.Sphere3D([0, 0, 0], self.R)
+		#self.pbc_sphere = IMP.algebra.Sphere3D([0, 0, 0], self.R)
 
 		# Outer bounding box for simulation:
 		self.bb = IMP.algebra.BoundingBox3D(
@@ -47,7 +47,7 @@ class System:
 		)
 		# Add enclosing spheres for pbc and outer simulation box
 		self.bb_harmonic = IMP.core.HarmonicUpperBound(0, self.K_BB)
-		self.pbc_bsss = IMP.core.BoundingSphere3DSingletonScore(self.bb_harmonic, self.pbc_sphere)
+		#self.pbc_bsss = IMP.core.BoundingSphere3DSingletonScore(self.bb_harmonic, self.pbc_sphere)
 		self.outer_bbss = IMP.core.BoundingBox3DSingletonScore(self.bb_harmonic, self.bb)
 
 	def add_protein(self, name, center, radius, mass, diffcoff, color):
@@ -67,12 +67,20 @@ class System:
 
 	def apply_boundary_conditions(self):
 		rgbmembers = [protein.prb.get_particle().get_index() for protein in self.proteins]
-		self.add_restraint(IMP.container.SingletonsRestraint(self.pbc_bsss, IMP.container.ListSingletonContainer(self.model, rgbmembers)))
+		#self.add_restraint(IMP.container.SingletonsRestraint(self.pbc_bsss, IMP.container.ListSingletonContainer(self.model, rgbmembers)))
 		self.add_restraint(IMP.container.SingletonsRestraint(self.outer_bbss, IMP.container.ListSingletonContainer(self.model, rgbmembers)))
 
 	def add_excluded_volume_restraint(self):
-		rgbmembers = [protein.prb.get_particle().get_index() for protein in self.proteins]
-		ev = IMP.core.ExcludedVolumeRestraint(IMP.container.ListSingletonContainer(self.model, rgbmembers), 1, 3)
+		rgbmembers=[]
+		#ADD ExcludedVolume by considering each rigidbody/protein as a sphere. Too coarse
+		#rgbmembers = [protein.prb.get_particle().get_index() for protein in self.proteins]
+
+		#ADD ExcludedVolume by considering each rigidbody/protein MEMBERS (residues) as a sphere. Too fine grained
+		for protein in self.proteins:
+			for residue_idxs in protein.prb.get_member_particle_indexes():
+				rgbmembers.append(residue_idxs)
+
+		ev = IMP.core.ExcludedVolumeRestraint(IMP.container.ListSingletonContainer(self.model, rgbmembers), 0.1, 10)
 		self.add_restraint(ev)
 
 	def update(self):

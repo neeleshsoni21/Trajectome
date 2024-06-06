@@ -38,12 +38,16 @@ if __name__ == "__main__":
 	t1 = time.time()
 
 	#TODO: Add rigid body and resolution option. Add logging lines also
-	system.add_protein_from_structure("NPC", pdbfile1, fastafile1, diffcoff=0.0, color=0, centerize = False)
-	system.add_protein_from_structure("NUP2", pdbfile2, fastafile2, diffcoff=0.01, color=1, centerize = False)
-	system.add_protein_from_structure("NUP85", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
+	#system.add_protein_from_structure("NPC", pdbfile1, fastafile1, diffcoff=0.0, color=0, centerize = False)
 
 	dt2 = time.time() - t1
 	print("Time taken for Adding:",dt2)
+
+	system.add_protein_from_structure("NUP2", pdbfile2, fastafile2, diffcoff=0.01, color=1, centerize = False)
+	system.add_protein_from_structure("NUP85.0", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
+	system.add_protein_from_structure("NUP85.1", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
+	system.add_protein_from_structure("NUP85.2", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
+	system.add_protein_from_structure("NUP85.3", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
 
 	for prot in system.proteins:
 		print(prot)
@@ -61,7 +65,7 @@ if __name__ == "__main__":
 	# time this step
 	t1 = time.time()
 
-	simulation = Simulation(system, output_dir='./output/', time_steps=50, temperature=300)
+	simulation = Simulation(system, output_dir='./output/', time_steps=500, temperature=300)
 	simulation.run()
 
 	dt2 = time.time() - t1
