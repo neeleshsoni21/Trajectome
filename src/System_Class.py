@@ -18,7 +18,7 @@ from Protein_Class import Protein, ProteinStructure
 from Interaction_Class import Interaction
 
 class System:
-	def __init__(self, L=5000, R=1300, K_BB=0.1):
+	def __init__(self, L=500, R=1300, K_BB=0.1):
 		self.model = IMP.Model()
 
 		self.sys = IMP.pmi.topology.System(self.model)
@@ -54,8 +54,8 @@ class System:
 		protein = Protein(self.model, name, center, radius, mass, diffcoff, color)
 		self.proteins.append(protein)
 
-	def add_protein_from_structure(self, name, pdbfile, fastafile, diffcoff, color):
-		protein = ProteinStructure(self.model, self.state, name, pdbfile, fastafile, diffcoff, color)
+	def add_protein_from_structure(self, name, pdbfile, fastafile, diffcoff, color, centerize):
+		protein = ProteinStructure(self.model, self.state, name, pdbfile, fastafile, diffcoff, color, centerize)
 		self.proteins.append(protein)
 
 	def add_interaction(self, protein1, protein2, interaction_type, strength):

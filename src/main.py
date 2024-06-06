@@ -5,6 +5,7 @@ Date: April 5, 2024
 
 import os
 import logging
+import time
 
 from System_Class import System
 from Simulation_Class import Simulation
@@ -13,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-	system = System()
+	system = System(L=2000)
 
 	# Example: Adding proteins
 	#system.add_protein("Protein1", center=[1,1,1], radius=30, mass=1000, diffcoff=0.01, color=0)
@@ -21,16 +22,28 @@ if __name__ == "__main__":
 	
 
 	data_path = './data/'
-	pdbfile1 = os.path.join(data_path,'pdb/7r5j_C8.cif')
+	pdbfile1 = os.path.join(data_path,'pdb/7r5j_C8_CA_center_v1.cif')
 	fastafile1 = os.path.join(data_path,'fasta/NPC_Whole.fasta')
+
+	#pdbfile1 = os.path.join(data_path,'pdb/1v5w_C8.cif')
+	#fastafile1 = os.path.join(data_path,'fasta/1v5w_A.fasta')
 	
 	pdbfile2 = os.path.join(data_path, 'pdb/Nup2.pdb')
 	fastafile2 = os.path.join(data_path, 'fasta/Nup2.fasta')
 
-	#TODO: Add rigid body and resolution option. Add logging lines also
-	system.add_protein_from_structure("NUP2", pdbfile1, fastafile1, diffcoff=0.01, color=0)
-	system.add_protein_from_structure("NPC", pdbfile2, fastafile2, diffcoff=0.01, color=0)
+	pdbfile3 = os.path.join(data_path, 'pdb/Nup85.pdb')
+	fastafile3 = os.path.join(data_path, 'fasta/Nup85.fasta')
 
+	# time this step
+	t1 = time.time()
+
+	#TODO: Add rigid body and resolution option. Add logging lines also
+	system.add_protein_from_structure("NPC", pdbfile1, fastafile1, diffcoff=0.0, color=0, centerize = False)
+	system.add_protein_from_structure("NUP2", pdbfile2, fastafile2, diffcoff=0.01, color=1, centerize = False)
+	system.add_protein_from_structure("NUP85", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
+
+	dt2 = time.time() - t1
+	print("Time taken for Adding:",dt2)
 
 	for prot in system.proteins:
 		print(prot)
@@ -45,5 +58,11 @@ if __name__ == "__main__":
 	system.add_excluded_volume_restraint()
 	system.apply_boundary_conditions()
 
-	simulation = Simulation(system, output_dir='./output/', time_steps=1000, temperature=300)
+	# time this step
+	t1 = time.time()
+
+	simulation = Simulation(system, output_dir='./output/', time_steps=50, temperature=300)
 	simulation.run()
+
+	dt2 = time.time() - t1
+	print("Time taken for Sim:",dt2)
