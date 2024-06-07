@@ -25,13 +25,33 @@ class Simulation:
 
 	def setup_brownian_dynamics(self):
 
+		# III. Time parameters:
+		BD_STEP_SIZE_SEC= 10E-8
+		SIM_TIME_SEC= 0.0001 #0.050 #In seconds
+		bd_step_size_fs= BD_STEP_SIZE_SEC * 1E+15
+		self.sim_time_ns= SIM_TIME_SEC * 1E+9
+		self.RMF_DUMP_INTERVAL_NS= self.sim_time_ns / 1000.0
+
+		self.sim_time_frames= self.convert_time_ns_to_frames(self.sim_time_ns, bd_step_size_fs)
+		self.rmf_dump_interval_frames= self.convert_time_ns_to_frames(self.RMF_DUMP_INTERVAL_NS, bd_step_size_fs)
+		
+
+		print("Simulation time {:.1e} ns / {} frames; "
+		  "RMF dump interval {:.1e} ns / {} frames".format(self.sim_time_ns,
+														  self.sim_time_frames,
+														   self.RMF_DUMP_INTERVAL_NS,
+														  self.rmf_dump_interval_frames))
+
 		self.bd = IMP.atom.BrownianDynamics(self.model)
 		print(self.system)
-		scoring_function = IMP.core.RestraintsScoringFunction(self.system.restraints)
-		self.bd.set_scoring_function(scoring_function)
+		self.scoring_function = IMP.core.RestraintsScoringFunction(self.system.restraints)
+		self.bd.set_scoring_function(self.scoring_function)
 		self.bd.set_time_step(10000)
 		self.bd.set_temperature(self.temperature)
 		self.bd.set_maximum_move(30)
+		self.bd.set_maximum_time_step(bd_step_size_fs) # in femtoseconds
+
+
 
 		# RMF filename for trajectory
 		RMF_FILENAME = self.output_dir+'/rigid.rmf'
@@ -46,6 +66,7 @@ class Simulation:
 		sos = IMP.rmf.SaveOptimizerState(self.model, rmf)
 		sos.set_log_level(IMP.SILENT)
 		sos.set_simulator(self.bd)
+		sos.set_period(self.rmf_dump_interval_frames)
 		self.bd.add_optimizer_state(sos)
 
 		# Dump initial frame to RMF
@@ -54,16 +75,30 @@ class Simulation:
 	def run(self):
 		self.system.apply_boundary_conditions()  # Ensure boundary conditions are applied before running
 		
-		#for step in range(self.time_steps):
-		#    self.perform_time_step(step)
-		#    #time.sleep(0.1)  # Simulate time step duration
-		
-		#OR
 		self.system.update()
-		self.bd.optimize(self.time_steps)
+
+		print("Running simulation")
+		print("Score before: {:f}".format(self.scoring_function.evaluate(True)))
+		self.bd.optimize(self.sim_time_frames)
+		print("Run finished successfully")
+		print("Score after: {:f}".format(self.scoring_function.evaluate(True)))
+
 		
 
-	def perform_time_step(self, step):
-		print(f"Performing time step {step}")
-		self.system.update()
-		self.bd.optimize(1000)
+	def convert_time_ns_to_frames(self, time_ns, step_size_fs):
+		'''
+		Given time in nanoseconds time_ns and step size in femtosecond
+		step_size_fs, return an integer number of frames greater or equal
+		to 1, such that time_ns*step_size_fs is as close as possible to
+		time_ns.
+		'''
+		FS_PER_NS= 1E6
+		time_fs= time_ns * FS_PER_NS
+		n_frames_float= (time_fs+0.0) / step_size_fs
+		n_frames= int(round(n_frames_float))
+
+		return max(n_frames, 1)
+	
+	
+	
+	

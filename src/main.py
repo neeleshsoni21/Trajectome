@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-	system = System(L=2000)
+	system = System(L=1000)
 
 	# Example: Adding proteins
 	#system.add_protein("Protein1", center=[1,1,1], radius=30, mass=1000, diffcoff=0.01, color=0)
@@ -34,23 +34,15 @@ if __name__ == "__main__":
 	pdbfile3 = os.path.join(data_path, 'pdb/Nup85.pdb')
 	fastafile3 = os.path.join(data_path, 'fasta/Nup85.fasta')
 
-	# time this step
-	t1 = time.time()
-
 	#TODO: Add rigid body and resolution option. Add logging lines also
 	#system.add_protein_from_structure("NPC", pdbfile1, fastafile1, diffcoff=0.0, color=0, centerize = False)
 
-	dt2 = time.time() - t1
-	print("Time taken for Adding:",dt2)
-
-	system.add_protein_from_structure("NUP2", pdbfile2, fastafile2, diffcoff=0.01, color=1, centerize = False)
-	system.add_protein_from_structure("NUP85.0", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
-	system.add_protein_from_structure("NUP85.1", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
-	system.add_protein_from_structure("NUP85.2", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
-	system.add_protein_from_structure("NUP85.3", pdbfile3, fastafile3, diffcoff=0.01, color=2, centerize = False)
-
+	for idx in range(0,3):
+		system.add_protein_from_structure("NUP2."+str(idx), pdbfile2, fastafile2, diffcoff=0.001, color=1, centerize = False)
+		system.add_protein_from_structure("NUP85."+str(idx), pdbfile3, fastafile3, diffcoff=0.001, color=2, centerize = False)
+		
+	#Get all ProteinStructure objects and obtain its hierarchy to append in the root hierarchy
 	for prot in system.proteins:
-		print(prot)
 		system.h_root.add_child(prot.hier)
 
 	# Example: Adding interaction
@@ -70,3 +62,5 @@ if __name__ == "__main__":
 
 	dt2 = time.time() - t1
 	print("Time taken for Sim:",dt2)
+
+	print("Score: kcal/mol")

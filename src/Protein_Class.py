@@ -36,15 +36,15 @@ class Protein:
 		self.color = color
 
 		self.create_rigid_body_protein()
-		self.hier.add_child(self.ph)
+		self.hier.add_child(self.mol)
 
 	def create_rigid_body_protein(self):
 		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), IMP.algebra.ReferenceFrame3D())
 		self.prb.set_coordinates_are_optimized(True)
 		self.prb.set_name(self.name + " rb")
 		
-		self.ph = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
-		self.ph.set_name(self.name)
+		self.mol = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
+		self.mol.set_name(self.name)
 
 		self.d = IMP.core.XYZR.setup_particle(
 			IMP.Particle(self.model),
@@ -52,7 +52,7 @@ class Protein:
 		)
 		IMP.display.Colored.setup_particle(self.d, IMP.display.get_display_color(self.color))
 		
-		self.ph.add_child(IMP.atom.Fragment.setup_particle(self.d))
+		self.mol.add_child(IMP.atom.Fragment.setup_particle(self.d))
 		IMP.atom.Mass.setup_particle(self.d, self.mass)
 		self.prb.add_member(self.d)
 		self.d.set_name(self.name)
@@ -99,15 +99,51 @@ class ProteinStructure:
 		self.diffcoff = diffcoff
 		self.color = color
 
+		self.Get_Hierarchy_From_PDB()
+
 		self.create_rigid_body_protein()
-		self.hier.add_child(self.ph)
+		self.hier.add_child(self.mol)
 
 		if centerize==True:
 			self.translate_protein_to_center()
 
 		return
 
+	def Get_Hierarchy_From_PDB(self):
+
+		
+		#protein_hierarchies=None
+		multi_model=False
+		self.protein_hierarchy=None
+
+		splittup = os.path.splitext(self.pdbfile)
+		if splittup[1] == ".pdb":
+			self.protein_hierarchy = IMP.atom.read_pdb(self.pdbfile, self.model)
+		
+		elif splittup[1] == ".cif":
+			self.protein_hierarchy = IMP.atom.read_mmcif(self.pdbfile, self.model)
+			
+			#For this hierarchy needs to be iterated
+			#protein_hierarchies = IMP.atom.read_multimodel_mmcif(self.pdbfile, self.model)
+			
+		else:
+			raise ValueError(f"Unsupported file format: {self.pdbfile}")
+			logger.error(f"Error reading file {self.pdbfile}")
+
+		self.All_Residues =[]
+		if multi_model==True:
+			for prot_hierarchy in protein_hierarchies:
+				residues = IMP.atom.get_by_type(prot_hierarchy, IMP.atom.RESIDUE_TYPE)
+				self.All_Residues.append(residues)
+		else:
+			residues = IMP.atom.get_by_type(self.protein_hierarchy, IMP.atom.RESIDUE_TYPE)
+			self.All_Residues.append(residues)
+
+		return
+
 	def setup_residues(self, residues):
+
+		self.Protein_Residues =[]
 
 		for i, residue in enumerate(residues):
 
@@ -131,10 +167,11 @@ class ProteinStructure:
 			)
 			IMP.display.Colored.setup_particle(d, IMP.display.get_display_color(self.color))
 			
-			self.ph.add_child(IMP.atom.Fragment.setup_particle(d))
+			self.mol.add_child(IMP.atom.Fragment.setup_particle(d))
 			IMP.atom.Mass.setup_particle(d, self.mass)
 
-			self.prb.add_member(d)
+			#self.prb.add_member(d)
+			self.Protein_Residues.append(d)
 
 			residx = IMP.pmi.tools.get_residue_indexes(residue)[0]
 			d.set_name(f"{self.name}_residue_{residx}")
@@ -143,61 +180,47 @@ class ProteinStructure:
 
 
 	def create_rigid_body_protein(self):
+		
+		self.protein = IMP.Particle(self.model)
 
-		protein_hierarchies=None
-		multi_model=None
+		#Define a molecule within a rigid body. In this case it is a protein
+		self.mol = IMP.atom.Molecule.setup_particle(self.protein)
+		self.mol.set_name(self.name)
 
-		splittup = os.path.splitext(self.pdbfile)
-		if splittup[1] == ".pdb":
-			protein_hierarchy = IMP.atom.read_pdb(self.pdbfile, self.model)
-		elif splittup[1] == ".cif":
-			protein_hierarchy = IMP.atom.read_mmcif(self.pdbfile, self.model)
-			multi_model=False
+		for residues in self.All_Residues:
+			self.setup_residues(residues)
 
-			#protein_hierarchies = IMP.atom.read_multimodel_mmcif(self.pdbfile, self.model)
-			#multi_model=True
-		else:
-			raise ValueError(f"Unsupported file format: {self.pdbfile}")
-			logger.error(f"Error reading file {self.pdbfile}")
-
-		All_Residues =[]
-		if multi_model==True:
-			for protein_hierarchy in protein_hierarchies:
-				residues = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.RESIDUE_TYPE)
-				All_Residues.append(residues)
-		else:
-			residues = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.RESIDUE_TYPE)
-			All_Residues.append(residues)
-
-
-
-		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), IMP.algebra.ReferenceFrame3D())
+		#Create a rigid body for the molecule. We can add more molecules in this rigid body
+		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), self.Protein_Residues)
 		self.prb.set_coordinates_are_optimized(True)
 		self.prb.set_name(self.name + " rb")
 
-		#print(self.name, "Radius init:", IMP.core.XYZR(self.prb.get_particle()))
+		Mol_radius_of_gyration = IMP.atom.get_radius_of_gyration(self.mol)
+		IMP.core.XYZR(self.prb.get_particle()).set_radius(Mol_radius_of_gyration)
 		
-		#Define a molecule within a rigid body. In this case it is a protein
-		self.ph = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
-		self.ph.set_name(self.name)
+		self.Tran_dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
 
-		for residues in All_Residues:
-			self.setup_residues(residues)
-
-		#self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
-		self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
-
-		print(self.name, "Radius init:", IMP.core.XYZR(self.prb.get_particle()))
-
-		print("RadGyr:",IMP.atom.get_radius_of_gyration(self.ph))
-		#IMP.core.XYZR.setup_particle(self.prb.get_particle(),50)
-		#self.prb.set_radius(50)
-
+		print(self.name, "Radius final:", IMP.core.XYZR(self.prb.get_particle()))
+		
 		#Rotational diffusion ceofficient is calculated automatically considering radius. However, radius is not correctly identified
-		#self.rotdif = IMP.atom.RigidBodyDiffusion.setup_particle(self.prb)
-		
+		self.Rot_diff = IMP.atom.RigidBodyDiffusion.setup_particle(self.prb)
+		self.Rot_diff.set_rotational_diffusion_coefficient(
+         self.Rot_diff.get_rotational_diffusion_coefficient() * 100)
 
+		print("\nRot Diff coef radians2/fs",self.Rot_diff.get_rotational_diffusion_coefficient())
+		print("Trans Diff coef A^2/fs",self.Tran_dif.get_diffusion_coefficient())
+		print("\n")
+		
 		return
+
+	def shuffle_protein(self):
+		#translation = IMP.algebra.get_random_vector_in(
+		#IMP.algebra.get_unit_bounding_box_3d())
+		#rotation = IMP.algebra.get_random_rotation_3d()
+		#transformation = IMP.algebra.Transformation3D(rotation, translation)
+		#IMP.core.transform(self.prb, transformation)
+		pass
+
 
 	def create_rigid_body_protein_singlemodel(self):
 
@@ -219,8 +242,8 @@ class ProteinStructure:
 		self.prb.set_coordinates_are_optimized(True)
 		self.prb.set_name(self.name + " rb")
 		
-		self.ph = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
-		self.ph.set_name(self.name)
+		self.mol = IMP.atom.Molecule.setup_particle(IMP.Particle(self.model))
+		self.mol.set_name(self.name)
 
 		for i, residue in enumerate(residues):
 			
@@ -238,7 +261,7 @@ class ProteinStructure:
 			)
 			IMP.display.Colored.setup_particle(d, IMP.display.get_display_color(self.color))
 			
-			self.ph.add_child(IMP.atom.Fragment.setup_particle(d))
+			self.mol.add_child(IMP.atom.Fragment.setup_particle(d))
 			IMP.atom.Mass.setup_particle(d, self.mass)
 			self.prb.add_member(d)
 			d.set_name(f"{self.name}_residue_{residx}")
