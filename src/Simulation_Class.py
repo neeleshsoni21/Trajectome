@@ -13,10 +13,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class Simulation:
-	def __init__(self, system, output_dir, time_steps, temperature):
+	def __init__(self, system, output_dir, simulation_time, temperature):
 
 		self.system = system
-		self.time_steps = time_steps
+		self.simulation_time = simulation_time
 		self.temperature = temperature
 		self.model = system.model
 		self.output_dir=output_dir
@@ -27,7 +27,7 @@ class Simulation:
 
 		# III. Time parameters:
 		BD_STEP_SIZE_SEC= 10E-8
-		SIM_TIME_SEC= 0.0001 #0.050 #In seconds
+		SIM_TIME_SEC= self.simulation_time #0.0001 #0.050 #In seconds
 		bd_step_size_fs= BD_STEP_SIZE_SEC * 1E+15
 		self.sim_time_ns= SIM_TIME_SEC * 1E+9
 		self.RMF_DUMP_INTERVAL_NS= self.sim_time_ns / 1000.0
@@ -43,12 +43,15 @@ class Simulation:
 														  self.rmf_dump_interval_frames))
 
 		self.bd = IMP.atom.BrownianDynamics(self.model)
-		print(self.system)
+		#print(self.system)
+		#print("Restraints:",self.system.restraints)
+		#print([type(rs) for rs in self.system.restraints])
 		self.scoring_function = IMP.core.RestraintsScoringFunction(self.system.restraints)
 		self.bd.set_scoring_function(self.scoring_function)
 		self.bd.set_time_step(10000)
 		self.bd.set_temperature(self.temperature)
 		self.bd.set_maximum_move(30)
+		##self.bd.set_maximum_move(5)
 		self.bd.set_maximum_time_step(bd_step_size_fs) # in femtoseconds
 
 
@@ -60,7 +63,10 @@ class Simulation:
 		IMP.rmf.add_hierarchy(rmf, self.system.h_root)
 		IMP.rmf.add_restraints(rmf, self.system.restraints)
 		IMP.rmf.add_geometry(rmf, IMP.display.BoundingBoxGeometry(self.system.bb))
-		#IMP.rmf.add_geometry(rmf, IMP.display.SphereGeometry(self.system.pbc_sphere))
+		IMP.rmf.add_geometry(rmf, IMP.display.BoundingBoxGeometry(self.system.bb_nucleus))
+		IMP.rmf.add_geometry(rmf, IMP.display.BoundingBoxGeometry(self.system.bb_cytoplasm))
+		#IMP.rmf.add_geometry(rmf, IMP.display.BoundingBoxGeometry(self.system.bb))
+		
 
 		# Pair RMF with model using an OptimizerState ("listener")
 		sos = IMP.rmf.SaveOptimizerState(self.model, rmf)
