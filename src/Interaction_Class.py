@@ -32,6 +32,15 @@ class Interaction:
 		
 		self.system.add_restraint(dr)
 
+	def add_distance_restraint(self, prot1, prot2, dist, k):
+		
+		cr = IMP.atom.create_distance_restraint(
+			IMP.atom.Selection(prot1.mol), 
+			IMP.atom.Selection(prot2.mol), dist, k)
+
+		self.system.add_restraint(cr)
+
+
 
 	'''
 	

@@ -81,7 +81,7 @@ class System:
 		self.proteins.append(protein)
 
 	def add_protein_from_structure(self, name, pdbfile, pdb_multimodel,  resolution, diffcoff, color, centerize):
-		protein = ProteinStructure(self.model, self.state, name, pdbfile, pdb_multimodel, resolution, diffcoff, color, centerize)
+		protein = ProteinStructure(self.model, self.state, self.h_root, name, pdbfile, pdb_multimodel, resolution, diffcoff, color, centerize)
 		self.proteins.append(protein)
 		return protein
 
@@ -112,14 +112,15 @@ class System:
 
 		#ADD ExcludedVolume by considering each rigidbody/protein MEMBERS (residues) as a sphere. Too fine grained
 		for protein in self.proteins:
-			#print(protein.prb.get_name(),protein.prb)
+			#print("p:",protein.prb.get_name(), protein.prb, protein.prb.get_particle())
 			for residue_idxs in protein.prb.get_member_particle_indexes():
 				rgbmembers.append(residue_idxs)
 
+		#sys.exit()
 		ev = IMP.core.ExcludedVolumeRestraint(IMP.container.ListSingletonContainer(self.model, rgbmembers), 100, 10)
 		self.add_restraint(ev)
 
-	def add_membrane_restraint(self, NGH_proteins):
+	def add_membrane_restraint2(self, NGH_proteins):
 
 		#PROT1_P1 =IMP.atom.Selection(self.system.h_root,molecule=prot1).get_selected_particles()[p1_idx]
 		rgbmembers=[]
@@ -142,21 +143,80 @@ class System:
 
 		return
 
-	def add_membrane_restraint2(self, NGH_proteins):
+	def add_membrane_restraint(self, NGH_proteins):
 
 		#PROT1_P1 =IMP.atom.Selection(self.system.h_root,molecule=prot1).get_selected_particles()[p1_idx]
 
-		prot = NGH_proteins[0]
-		print("Prot name:",prot.hier.get_name())
-		mr = IMP.pmi.restraints.basic.MembraneRestraint(self.h_root,
-			objects_inside=None,
-			objects_above=None,
-			objects_below=[prot.hier.get_name()],
-			#objects_below=[(41, 80, "helix_2")],
-			weight=10)
-		
-		self.add_restraint(mr)
-		mr.add_to_model()
+		#prot = NGH_proteins[0]
+		#print("Prot name:",prot.hier.get_name())
+
+		import IMP.npc
+		import IMP.pmi.restraints.npc
+		from MembraneRestraint_Class import MembraneRestraint
+
+		for prot in NGH_proteins:
+			print(prot.mol.get_name())
+			print(prot.hier.get_name())
+			#mr = IMP.pmi.restraints.basic.MembraneRestraint2(self.h_root,
+			mr_obj = MembraneRestraint(self.h_root,
+				objects_inside=None,
+				objects_above=None,
+				#objects_below=[prot.hier.get_name()],
+				objects_below=[prot.mol.get_name()],
+				#objects_below=["NUP2.9_Chain-A_frag_83-132"],
+				
+				#objects_below=[(41, 80, "helix_2")],
+				weight=10)
+
+			#self.add_restraint(mr_obj.rs)
+			#self.add_restraint(mr_obj.mr)
+
+			mr_obj2 = IMP.pmi.restraints.npc.MembraneExclusionRestraint(
+				hier=self.h_root, protein=prot.mol.get_name(), label='Test',
+				tor_R=540., tor_r=127)
+
+			self.add_restraint(mr_obj2.rs)
+			#self.add_restraint(mr_obj2.mex)
+			#mr.add_to_model()
+
+		return
+
+	def add_membrane_exclusion_restraint(self, NGH_proteins):
+
+		#PROT1_P1 =IMP.atom.Selection(self.system.h_root,molecule=prot1).get_selected_particles()[p1_idx]
+
+		#prot = NGH_proteins[0]
+		#print("Prot name:",prot.hier.get_name())
+
+		import IMP.npc
+		import IMP.pmi.restraints.npc
+		from MembraneExclusionRestraint import 	MembraneExclusionRestraint
+
+		for prot in NGH_proteins:
+			print(prot.mol.get_name())
+			print(prot.hier.get_name())
+			#mr = IMP.pmi.restraints.basic.MembraneRestraint2(self.h_root,
+			#mr_obj = MembraneRestraint(self.h_root,
+			#	objects_inside=None,
+			#	objects_above=None,
+			#	#objects_below=[prot.hier.get_name()],
+			#	objects_below=[prot.mol.get_name()],
+			#	#objects_below=["NUP2.9_Chain-A_frag_83-132"],
+				
+			#	#objects_below=[(41, 80, "helix_2")],
+			#	weight=10)
+
+			#self.add_restraint(mr_obj.rs)
+			#self.add_restraint(mr_obj.mr)
+
+			#mr_obj2 = IMP.pmi.restraints.npc.MembraneExclusionRestraint(
+			mr_obj2 = MembraneExclusionRestraint(
+				hier=self.h_root, protein=prot.mol.get_name(), label='Test',
+				tor_R=540., tor_r=127)
+
+			self.add_restraint(mr_obj2.rs)
+			#self.add_restraint(mr_obj2.mex)
+			#mr.add_to_model()
 
 		return
 
@@ -199,9 +259,11 @@ class System:
 			if protein.diffcoff==0:
 				continue
 
+			print("BB:",protein.name)
 			translation = IMP.algebra.get_random_vector_in(bb_restraint)
 			rotation = IMP.algebra.get_random_rotation_3d()
 			transformation = IMP.algebra.Transformation3D(rotation, translation)
+			print(translation)
 
 			IMP.core.transform(protein.prb, transformation)
 

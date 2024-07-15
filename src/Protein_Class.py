@@ -14,6 +14,7 @@ import IMP.pmi.dof
 import IMP.pmi.tools
 import IMP.pmi.topology
 import numpy as np
+from collections import OrderedDict, defaultdict
 
 import logging
 import os
@@ -60,35 +61,36 @@ class Protein:
 		self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
 
 class ProteinStructure:
-	def __init__(self, model, state, name, pdbfile, pdb_multimodel= False, resolution= 50, diffcoff=0.01, color=0, centerize=False):
+	def __init__(self, model, state, h_root, name, pdbfile, pdb_multimodel= False, resolution= 50, diffcoff=0.01, color=0, centerize=False):
 		
-		self.amino_acid_radii = {
-			".": 4.0,
-			"UNK": 4.0,
-			"GLY": 3.4,
-			"ALA": 3.8,
-			"VAL": 4.0,
-			"LEU": 4.0,
-			"ILE": 4.0,
-			"MET": 4.1,
-			"PHE": 4.4,
-			"TYR": 4.6,
-			"TRP": 4.8,
-			"SER": 3.6,
-			"THR": 3.8,
-			"CYS": 3.8,
-			"PRO": 4.0,
-			"ASN": 3.8,
-			"GLN": 4.0,
-			"ASP": 3.8,
-			"GLU": 3.8,
-			"LYS": 4.3,
-			"ARG": 4.3,
-			"HIS": 4.1
-		}
+		def default_radius():return 4.0
+		self.amino_acid_radii = defaultdict(default_radius,{
+			"GLY": 3.4,"G": 3.4,
+			"ALA": 3.8,"A": 3.8,
+			"VAL": 4.0,"V": 4.0,
+			"LEU": 4.0,"L": 4.0,
+			"ILE": 4.0,"I": 4.0,
+			"MET": 4.1,"M": 4.1,
+			"PHE": 4.4,"F": 4.4,
+			"TYR": 4.6,"Y": 4.6,
+			"TRP": 4.8,"W": 4.8,
+			"SER": 3.6,"S": 3.6,
+			"THR": 3.8,"T": 3.8,
+			"CYS": 3.8,"C": 3.8,
+			"PRO": 4.0,"P": 4.0,
+			"ASN": 3.8,"N": 3.8,
+			"GLN": 4.0,"Q": 4.0,
+			"ASP": 3.8,"D": 3.8,
+			"GLU": 3.8,"E": 3.8,
+			"LYS": 4.3,"K": 4.3,
+			"ARG": 4.3,"R": 4.3,
+			"HIS": 4.1,"H": 4.1
+		})
 
 		self.model = model
 		self.name = name
+		self.state = state
+		self.h_root = h_root
 
 		self.protp = IMP.Particle(self.model, name)
 		self.hier = IMP.atom.Hierarchy.setup_particle(self.protp)
@@ -117,7 +119,7 @@ class ProteinStructure:
 		
 		#protein_hierarchies=None
 		protein_hierarchy=None
-		self.All_Residues =[]
+		self.All_Residues =OrderedDict()
 
 		splittup = os.path.splitext(self.pdbfile)
 		if splittup[1] == ".pdb":
@@ -130,7 +132,10 @@ class ProteinStructure:
 			else:
 				protein_hierarchy = IMP.atom.read_pdb(self.pdbfile, self.model)
 				residues = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.RESIDUE_TYPE)
-				self.All_Residues.append(residues)
+				#self.All_Residues.append(residues)
+				proteins = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.CHAIN_TYPE)
+				for prot in proteins:
+					self.All_Residues['-'.join(prot.get_name().split(' '))]=prot.get_children()
 		
 		elif splittup[1] == ".cif":
 			
@@ -143,7 +148,20 @@ class ProteinStructure:
 			else:
 				protein_hierarchy = IMP.atom.read_mmcif(self.pdbfile, self.model)
 				residues = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.RESIDUE_TYPE)
-				self.All_Residues.append(residues)
+				
+				proteins = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.CHAIN_TYPE)
+				for prot in proteins:
+					self.All_Residues['-'.join(prot.get_name().split(' '))]=prot.get_children()
+					
+
+				#TODO: Try selection method as they are giving actual prot name, instead of chain_0
+				#mols = IMP.atom.get_by_type(protein_hierarchy, IMP.atom.MOLECULE_TYPE)
+				#print("Mols:",mols)
+				#print("RES:",list(self.All_Residues.values())[0:10])
+
+				#residues =IMP.atom.Selection().get_selected_particles()
+				#print("RES2:",residues[0:10])
+				#sys.exit()
 			
 		else:
 			raise ValueError(f"Unsupported file format: {self.pdbfile}")
@@ -158,9 +176,12 @@ class ProteinStructure:
 		#Define a molecule within a rigid body. In this case it is a protein
 		self.mol = IMP.atom.Molecule.setup_particle(self.protein)
 		self.mol.set_name(self.name)
+		##d = IMP.core.XYZ.setup_particle(self.mol.get_particle())#,IMP.algebra.ReferenceFrame3D())
 
-		for mdl_id, residues in enumerate(self.All_Residues):
-			self.setup_residues(residues)
+		self.Protein_Residues =[]
+		#for mdl_id, residues in enumerate(self.All_Residues):
+		for mol_id, residues in self.All_Residues.items():
+			self.setup_residues(mol_id, residues)
 
 		#Create a rigid body for the molecule. We can add more molecules in this rigid body
 		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), self.Protein_Residues)
@@ -188,7 +209,7 @@ class ProteinStructure:
 		
 		return
 
-	def setup_residues(self, residues):
+	def setup_residues(self, mol_id, residues):
 
 		self.Coarse_Residues = []
 		Temp_Frag=[]
@@ -205,6 +226,9 @@ class ProteinStructure:
 			coordsR = IMP.core.XYZR(leaf1[0]) #Add first atom, mostly this will be N for full atom pdb file
 			xyz = coordsR.get_coordinates()
 			#R_rad = coordsR.get_radius() #Individual atom radius
+			##if residue.get_name() not in self.amino_acid_radii.keys():
+			##	print(residue)
+			##	continue
 			radius = self.amino_acid_radii[residue.get_name()] #Entire residue radius
 			mass = self.mass
 			residx = IMP.pmi.tools.get_residue_indexes(residue)[0]
@@ -215,7 +239,7 @@ class ProteinStructure:
 		if len(Temp_Frag)!=0:
 			self.combine_residues_to_fragment(Temp_Frag)
 
-		self.Protein_Residues =[]
+		#self.Protein_Residues =[]
 		for i, residue in enumerate(self.Coarse_Residues):
 			
 			xyz = residue[0]
@@ -234,7 +258,7 @@ class ProteinStructure:
 			IMP.atom.Mass.setup_particle(d, mass)
 			self.Protein_Residues.append(d)
 
-			d.set_name(f"{self.name}_fragment_{residx}")
+			d.set_name(f"{self.name}_{mol_id}_frag_{residx}")
 
 
 		return
@@ -249,6 +273,7 @@ class ProteinStructure:
 		for frag in Temp_Frag:
 		
 			Mean_xyz[0]+=frag[0][0];Mean_xyz[1]+=frag[0][1];Mean_xyz[2]+=frag[0][2]
+
 			New_radius+=frag[1]**3
 
 			Total_mass+=frag[2]

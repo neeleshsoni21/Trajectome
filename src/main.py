@@ -10,12 +10,14 @@ import time
 from System_Class import System
 from Simulation_Class import Simulation
 from Interaction_Class import Interaction
+#from Trajectory_Analysis import TrajectoryAnalysis
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-	system = System(L=2000)
+	system = System(L=3000)
 
 	# Example: Adding proteins
 	#system.add_protein("Protein1", center=[1,1,1], radius=30, mass=1000, diffcoff=0.01, color=0)
@@ -72,7 +74,7 @@ if __name__ == "__main__":
 		NGH_Prots2.append(ngh_prot2)
 
 		pdbfile4 = os.path.join(data_path, 'pdb/Yeast_Proteins/Nup85.pdb')
-		ngh_prot3 = system.add_protein_from_structure("NUP85."+str(idx), 
+		ngh_prot3 = system.add_protein_from_structure("NUP84."+str(idx), 
 			pdbfile4, pdb_multimodel=False, resolution = 50,
 			diffcoff=0.01, color=4, centerize = False)
 		NGH_Prots.append(ngh_prot3)
@@ -82,16 +84,25 @@ if __name__ == "__main__":
 	for prot in system.proteins:
 		system.h_root.add_child(prot.hier)
 	
-	
+	'''
 	#-------------------------
-	#ADD DISTANCE RESTRAINTS
+	#ADD DISTANCE RESTRAINTS (FOR XLs)
 	#-------------------------
 	#YEAST NPC interactors
 	for idx in range(0,NGH_Proteins_Copies):
 		prot1_tuple = ("NUP85."+str(idx), 0); prot2_tuple = ("NUP2."+str(idx), 0)
 		Int_obj = Interaction(system)
-		Int_obj.add_binding_restraint(prot1_tuple, prot2_tuple, "binding", 20, 0.00001)
+		Int_obj.add_binding_restraint(prot1_tuple, prot2_tuple, "binding", 10, 0.00001)
 		pass
+	'''
+
+	#-------------------------
+	#ADD DISTANCE RESTRAINTS (FOR XL or APMS)
+	#-------------------------
+	for prot1, prot2 in zip(NGH_Prots1, NGH_Prots2):
+		Int_obj = Interaction(system)
+		Int_obj.add_distance_restraint(prot1, prot2, 10, 0.00001)
+
 
 	
 	# Adding Excluded Volume Restraint and boundary conditions
@@ -100,11 +111,24 @@ if __name__ == "__main__":
 	#system.Iterate_Hierarchy()
 	
 	###system.add_membrane_restraint(NGH_Prots)
+	
+	#-------------------------
+	#ADD MEMBRANE RESTRAINTS
+	#-------------------------
+	#TODO: BELOW ARE IN TESTING STAGE
+	#system.add_membrane_restraint(NGH_Prots)
+	#system.add_membrane_exclusion_restraint(NGH_Prots)
 
 
 	system.apply_nucleoplasm_boundary_conditions(NGH_Prots1)
 	system.apply_nucleoplasm_boundary_conditions(NGH_Prots2)
 	system.apply_cytoplasm_boundary_conditions(NGH_Prots3)
+	
+	#-------------------------
+	#RANDOMIZE NGH in the entire box
+	#-------------------------
+	#bounding_box=None
+	#system.shuffle_neighborhood_proteins(bounding_box, NGH_Prots1+NGH_Prots2+NGH_Prots3)
 	
 	bounding_box="nucleoplasm"
 	system.shuffle_neighborhood_proteins(bounding_box, NGH_Prots1)
