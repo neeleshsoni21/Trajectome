@@ -2,6 +2,9 @@
 
 ## Generalized application to generate brownian dynamics trajectories of interacting protein complexes
 
+# Documentation of the code
+https://neeleshsoni21.github.io/Trajectome/
+
 ## USAGE:
 
 Download the source code or clone it as follows:
@@ -20,3 +23,4 @@ cd ../..
 ```bash
 python src/main.py
 ```
+
