@@ -34,19 +34,6 @@ if __name__ == "__main__":
 	
 	data_path = './data/'
 
-	'''
-	NPC_Subunits=[]
-	#HUMAN: IMPORT each NPC subunit from different pdb
-	for idx in range(0,8):
-		pdbfile1 = os.path.join(data_path,
-			'pdb/Human_Proteins/C8_Symmetry/7r5j_C8_SU_'+str(idx+1)+'.cif')
-
-		npc_subunit_i = system.add_protein_from_structure("NPC-SU-"+str(idx+1), 
-			pdbfile1, pdb_multimodel=False, resolution = 100, 
-			diffcoff=0.0, color=1, centerize = False)
-
-		NPC_Subunits.append(npc_subunit_i)
-	'''
 	
 	NPC_Subunits=[]
 	#YEAST:IMPORT entire NPC from single pdb
@@ -124,9 +111,6 @@ if __name__ == "__main__":
 	system.apply_boundary_conditions()
 	logger.info("Applied nucleoplasm and cytoplasm boundary conditions.")
 	
-
-	
-
 	#system.Iterate_Hierarchy()
 	
 	###system.add_membrane_restraint(NGH_Prots)
