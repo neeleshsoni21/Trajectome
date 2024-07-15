@@ -1,6 +1,9 @@
 """
 Author: Neelesh Soni, neelesh@salilab.org, neeleshsoni03@gmail.com
 Date: April 5, 2024
+
+Attributes:
+    logger (TYPE): Description
 """
 
 import os
@@ -13,11 +16,17 @@ from Interaction_Class import Interaction
 #from Trajectory_Analysis import TrajectoryAnalysis
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
+	handlers=[logging.FileHandler("simulation.log"), logging.StreamHandler()])
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
+
+	logger.info("Starting the main simulation script.")
+
 	system = System(L=3000)
+
+	logger.info("System initialized with L=3000.")
 
 	# Example: Adding proteins
 	#system.add_protein("Protein1", center=[1,1,1], radius=30, mass=1000, diffcoff=0.01, color=0)
@@ -50,6 +59,8 @@ if __name__ == "__main__":
 			diffcoff=0.0, color=1, centerize = False)
 
 		NPC_Subunits.append(npc_subunit_i)
+
+		logger.info(f"Added NPC subunit {idx + 1}.")
 	
 	
 	NGH_Prots=[];
@@ -80,6 +91,8 @@ if __name__ == "__main__":
 		NGH_Prots.append(ngh_prot3)
 		NGH_Prots3.append(ngh_prot3)
 
+		logger.info(f"Added NGH protein {idx}.")
+
 	#Get all ProteinStructure objects and obtain its hierarchy to append in the root hierarchy
 	for prot in system.proteins:
 		system.h_root.add_child(prot.hier)
@@ -102,12 +115,18 @@ if __name__ == "__main__":
 	for prot1, prot2 in zip(NGH_Prots1, NGH_Prots2):
 		Int_obj = Interaction(system)
 		Int_obj.add_distance_restraint(prot1, prot2, 10, 0.00001)
+		logger.info(f"Added distance restraint between {prot1.name} and {prot2.name}.")
 
 
 	
 	# Adding Excluded Volume Restraint and boundary conditions
 	system.add_excluded_volume_restraint()
 	system.apply_boundary_conditions()
+	logger.info("Applied nucleoplasm and cytoplasm boundary conditions.")
+	
+
+	
+
 	#system.Iterate_Hierarchy()
 	
 	###system.add_membrane_restraint(NGH_Prots)
@@ -123,6 +142,7 @@ if __name__ == "__main__":
 	system.apply_nucleoplasm_boundary_conditions(NGH_Prots1)
 	system.apply_nucleoplasm_boundary_conditions(NGH_Prots2)
 	system.apply_cytoplasm_boundary_conditions(NGH_Prots3)
+	logger.info("Applied nucleoplasm and cytoplasm boundary conditions.")
 	
 	#-------------------------
 	#RANDOMIZE NGH in the entire box
@@ -137,14 +157,17 @@ if __name__ == "__main__":
 	bounding_box="cytoplasm"
 	system.shuffle_neighborhood_proteins(bounding_box, NGH_Prots3)
 
+	logger.info("Shuffled neighborhood proteins.")
+
 	# time this step
 	t1 = time.time()
 
 	#simulation_time = 0.0001 #In Seconds
-	simulation = Simulation(system, output_dir='./output/', simulation_time = 0.0001, temperature=300)
+	simulation = Simulation(system, output_dir='./output/', simulation_time = 0.00005, temperature=300)
 	simulation.run()
 
 	dt2 = time.time() - t1
-	print("Time taken for Sim:",dt2)
+	logger.info(f"Simulation completed in {dt2} seconds.")
 
-	print("Score: kcal/mol")
+	logger.info("Score: kcal/mol")
+

@@ -1,6 +1,9 @@
 """
 Author: Neelesh Soni, neelesh@salilab.org, neeleshsoni03@gmail.com
 Date: April 5, 2024
+
+Attributes:
+	logger (TYPE): Description
 """
 
 import IMP
@@ -9,12 +12,40 @@ import IMP.rmf
 import RMF
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 logger = logging.getLogger(__name__)
 
 class Simulation:
-	def __init__(self, system, output_dir, simulation_time, temperature):
+	"""
+	A class to represent and run simulations on a protein system.
 
+	Attributes:
+		bd (IMP.atom.BrownianDynamics): Brownian dynamics simulator.
+		model (IMP.Model): The IMP model.
+		output_dir (str): Directory for simulation output files.
+		rmf_dump_interval_frames (int): Interval for dumping RMF frames.
+		RMF_DUMP_INTERVAL_NS (float): Interval for dumping RMF frames in nanoseconds.
+		scoring_function (IMP.core.RestraintsScoringFunction): Scoring function for restraints.
+		sim_time_frames (int): Simulation time in frames.
+		sim_time_ns (float): Simulation time in nanoseconds.
+		simulation_time (float): Total simulation time.
+		system (System): The system to be simulated.
+		temperature (float): Temperature for the simulation.
+	"""
+	
+	def __init__(self, system, output_dir, simulation_time, temperature):
+		"""
+		Initializes the Simulation instance with specified parameters.
+
+		Args:
+			system (System): The system to be simulated.
+			output_dir (str): Directory for simulation output files.
+			simulation_time (float): Total simulation time.
+			temperature (float): Temperature for the simulation.
+
+		Returns:
+			None
+		"""
 		self.system = system
 		self.simulation_time = simulation_time
 		self.temperature = temperature
@@ -24,7 +55,15 @@ class Simulation:
 		self.setup_brownian_dynamics()
 
 	def setup_brownian_dynamics(self):
+		"""
+		Sets up the Brownian dynamics simulation parameters.
 
+		Args:
+			None
+
+		Returns:
+			None
+		"""
 		# III. Time parameters:
 		BD_STEP_SIZE_SEC= 10E-8
 		SIM_TIME_SEC= self.simulation_time #0.0001 #0.050 #In seconds
@@ -79,6 +118,15 @@ class Simulation:
 		sos.update_always("initial conformation")
 
 	def run(self):
+		"""
+		Runs the simulation.
+
+		Args:
+			None
+
+		Returns:
+			None
+		"""
 		self.system.apply_boundary_conditions()  # Ensure boundary conditions are applied before running
 		
 		self.system.update()
@@ -92,12 +140,16 @@ class Simulation:
 		
 
 	def convert_time_ns_to_frames(self, time_ns, step_size_fs):
-		'''
-		Given time in nanoseconds time_ns and step size in femtosecond
-		step_size_fs, return an integer number of frames greater or equal
-		to 1, such that time_ns*step_size_fs is as close as possible to
-		time_ns.
-		'''
+		"""
+		Converts simulation time from nanoseconds to frames.
+
+		Args:
+			time_ns (float): Time in nanoseconds.
+			step_size_fs (float): Step size in femtoseconds.
+
+		Returns:
+			int: Number of frames.
+		"""
 		FS_PER_NS= 1E6
 		time_fs= time_ns * FS_PER_NS
 		n_frames_float= (time_fs+0.0) / step_size_fs

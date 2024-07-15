@@ -1,6 +1,9 @@
 """
 Author: Neelesh Soni, neelesh@salilab.org, neeleshsoni03@gmail.com
 Date: April 5, 2024
+
+Attributes:
+	logger (TYPE): Description
 """
 
 import logging
@@ -9,16 +12,44 @@ import IMP
 import IMP.atom
 import IMP.core
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 logger = logging.getLogger(__name__)
 
 class Interaction:
+	"""
+	A class to represent interactions within a protein simulation system.
+
+	Attributes:
+		system (System): The system to which the interactions belong.
+	"""
 	
 	def __init__(self, system):
+		"""
+		Initializes the Interaction instance with the provided system.
+
+		Args:
+			system (System): The system to which the interactions belong.
+
+		Returns:
+			None
+		"""
 		self.system = system
+		logger.info("Interaction instance created.")
 
 	def add_binding_restraint(self, prot1_tuple, prot2_tuple, name, mean_dist, kappa):
+		"""
+		Adds a binding restraint between two proteins.
 
+		Args:
+			prot1_tuple (tuple): A tuple containing the first protein and its index.
+			prot2_tuple (tuple): A tuple containing the second protein and its index.
+			name (str): The name of the restraint.
+			mean_dist (float): The mean distance for the restraint.
+			kappa (float): The kappa value for the harmonic function.
+
+		Returns:
+			None
+		"""
 		prot1, p1_idx = prot1_tuple
 		prot2, p2_idx = prot2_tuple
 
@@ -32,13 +63,30 @@ class Interaction:
 		
 		self.system.add_restraint(dr)
 
+		logger.info(f"Added binding restraint between {prot1} and {prot2} with mean distance {mean_dist} and kappa {kappa}.")
+
+
 	def add_distance_restraint(self, prot1, prot2, dist, k):
-		
+		"""
+		Adds a distance restraint between two proteins.
+
+		Args:
+			prot1 (Protein): The first protein.
+			prot2 (Protein): The second protein.
+			dist (float): The target distance for the restraint.
+			k (float): The force constant for the restraint.
+
+		Returns:
+			None
+		"""
 		cr = IMP.atom.create_distance_restraint(
 			IMP.atom.Selection(prot1.mol), 
 			IMP.atom.Selection(prot2.mol), dist, k)
 
 		self.system.add_restraint(cr)
+
+		logger.info(f"Added distance restraint between {prot1.name} and {prot2.name} with distance {dist} and kappa {k}.")
+
 
 
 

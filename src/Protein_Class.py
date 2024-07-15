@@ -2,6 +2,11 @@
 """
 Author: Neelesh Soni, neelesh@salilab.org, neeleshsoni03@gmail.com
 Date: April 5, 2024
+
+This module defines the `Protein` class used for protein simulations.
+
+Attributes:
+	logger (logging.Logger): Logger for the module.
 """
 
 
@@ -19,11 +24,41 @@ from collections import OrderedDict, defaultdict
 import logging
 import os
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 logger = logging.getLogger(__name__)
 
 class Protein:
+	"""
+	A class to represent a protein in a simulation.
+
+	Attributes:
+		model (IMP.Model): The IMP model.
+		name (str): Name of the protein.
+		center (list): Coordinates of the protein's center.
+		radius (int): Radius of the protein.
+		mass (int): Mass of the protein.
+		diffcoff (float): Diffusion coefficient of the protein.
+		color (int): Color index for display.
+		protp (IMP.Particle): The main particle representing the protein.
+		hier (IMP.atom.Hierarchy): Hierarchy setup for the protein.
+		prb (IMP.core.RigidBody): Rigid body of the protein.
+		mol (IMP.atom.Molecule): Molecule representation of the protein.
+		dif (IMP.atom.Diffusion): Diffusion setup for the protein.
+	"""
+
 	def __init__(self, model, name, center=[1,1,1], radius=30, mass=1000, diffcoff=0.01, color=0):
+		"""
+		Constructs all the necessary attributes for the Protein object.
+
+		Args:
+			model (IMP.Model): The IMP model.
+			name (str): Name of the protein.
+			center (list, optional): Coordinates of the protein's center. Default is [1, 1, 1].
+			radius (int, optional): Radius of the protein. Default is 30.
+			mass (int, optional): Mass of the protein. Default is 1000.
+			diffcoff (float, optional): Diffusion coefficient of the protein. Default is 0.01.
+			color (int, optional): Color index for display. Default is 0.
+		"""
 		self.model = model
 		self.name = name
 
@@ -38,8 +73,22 @@ class Protein:
 
 		self.create_rigid_body_protein()
 		self.hier.add_child(self.mol)
+		logger.info(f"Initialized Protein: {name} at center {center} with radius {radius}, mass {mass}, diffusion coefficient {diffcoff}, and color {color}.")
+
 
 	def create_rigid_body_protein(self):
+		"""
+		Creates a rigid body representation of the protein.
+
+		This method sets up the protein structure by combining residues into a rigid
+		body and configuring necessary attributes such as diffusion coefficient.
+		
+		Args:
+			None
+
+		Returns:
+			None
+		"""
 		self.prb = IMP.core.RigidBody.setup_particle(IMP.Particle(self.model), IMP.algebra.ReferenceFrame3D())
 		self.prb.set_coordinates_are_optimized(True)
 		self.prb.set_name(self.name + " rb")
@@ -60,10 +109,72 @@ class Protein:
 		
 		self.dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
 
+		logger.info(f"Created rigid body protein {self.name}.")
+
+
 class ProteinStructure:
+
+	"""
+	A class to represent and manipulate the structure of a protein for simulations.
+
+	Attributes:
+		All_Residues (dict): Dictionary containing all residues in the protein.
+		amino_acid_radii (defaultdict): Default dictionary containing radii for different amino acids.
+		Coarse_Residues (list): List of coarse-grained residues.
+		color (int): Color index for display purposes.
+		dif (IMP.atom.Diffusion): Diffusion setup for the protein.
+		diffcoff (float): Diffusion coefficient of the protein.
+		h_root (IMP.atom.Hierarchy): Root hierarchy of the protein.
+		hier (IMP.atom.Hierarchy): Hierarchy setup for the protein.
+		mass (float): Mass of the protein.
+		model (IMP.Model): The IMP model.
+		mol (IMP.atom.Molecule): Molecule representation of the protein.
+		multi_model (bool): Indicates if the PDB file contains multiple models.
+		name (str): Name of the protein.
+		pdbfile (str): Path to the PDB file of the protein.
+		prb (IMP.core.RigidBody): Rigid body of the protein.
+		protein (IMP.atom.Protein): Protein representation.
+		Protein_Residues (list): List of residues in the protein.
+		protp (IMP.Particle): Main particle representing the protein.
+		resolution (int): Resolution for the protein structure.
+		Rot_diff (float): Rotational diffusion coefficient.
+		state (IMP.pmi.topology.State): State of the protein in the simulation.
+		Tran_dif (float): Translational diffusion coefficient.
+	"""
+	
 	def __init__(self, model, state, h_root, name, pdbfile, pdb_multimodel= False, resolution= 50, diffcoff=0.01, color=0, centerize=False):
-		
-		def default_radius():return 4.0
+		"""
+		Constructs all the necessary attributes for the ProteinStructure object.
+
+		Args:
+			model (IMP.Model): The IMP model.
+			state (IMP.pmi.topology.State): State of the protein in the simulation.
+			h_root (IMP.atom.Hierarchy): Root hierarchy of the protein.
+			name (str): Name of the protein.
+			pdbfile (str): Path to the PDB file of the protein.
+			pdb_multimodel (bool, optional): Indicates if the PDB file contains multiple models. Default is False.
+			resolution (int, optional): Resolution for the protein structure. Default is 50.
+			diffcoff (float, optional): Diffusion coefficient of the protein. Default is 0.01.
+			color (int, optional): Color index for display purposes. Default is 0.
+			centerize (bool, optional): Whether to centerize the protein. Default is False.
+
+		Returns:
+			None
+		"""
+		def default_radius():
+			"""
+			Returns the default radius for amino acids.
+
+			This method provides the default radius value used for amino acids when no
+			specific radius is defined.
+			
+			Args:
+				None
+
+			Returns:
+				float: The default radius value.
+			"""
+			return 4.0
 		self.amino_acid_radii = defaultdict(default_radius,{
 			"GLY": 3.4,"G": 3.4,
 			"ALA": 3.8,"A": 3.8,
@@ -112,11 +223,24 @@ class ProteinStructure:
 		if centerize==True:
 			self.translate_protein_to_center()
 
+		logger.info(f"Initialized ProteinStructure: {name} from PDB file {pdbfile} with resolution {resolution}, diffusion coefficient {diffcoff}, and color {color}.")
+	
+
 		return
 
 	def Get_Hierarchy_From_PDB(self):
+		"""
+		Retrieves the hierarchy of the protein from a PDB file.
 
+		This method reads a PDB file and extracts the hierarchy of the protein structure
+		for further processing and simulation.
 		
+		Args:
+			pdbfile (str): The path to the PDB file.
+
+		Returns:
+			IMP.atom.Hierarchy: The hierarchy of the protein structure.
+		"""
 		#protein_hierarchies=None
 		protein_hierarchy=None
 		self.All_Residues =OrderedDict()
@@ -170,7 +294,18 @@ class ProteinStructure:
 		return
 
 	def create_rigid_body_protein(self):
+		"""
+		Creates a rigid body representation of the protein.
+
+		This method sets up the protein structure by combining residues into a rigid
+		body and configuring necessary attributes such as diffusion coefficient.
 		
+		Args:
+			None
+
+		Returns:
+			None
+		"""
 		self.protein = IMP.Particle(self.model)
 
 		#Define a molecule within a rigid body. In this case it is a protein
@@ -193,7 +328,7 @@ class ProteinStructure:
 		
 		self.Tran_dif = IMP.atom.Diffusion.setup_particle(self.prb, self.diffcoff)
 
-		print(self.name, "Radius final:", IMP.core.XYZR(self.prb.get_particle()))
+		logger.info(str(self.name)+ " Radius final:"+str(IMP.core.XYZR(self.prb.get_particle())))
 		
 		rot_diff_scale=10
 		if self.diffcoff==0:
@@ -201,16 +336,26 @@ class ProteinStructure:
 		#Rotational diffusion ceofficient is calculated automatically considering radius. However, radius is not correctly identified
 		self.Rot_diff = IMP.atom.RigidBodyDiffusion.setup_particle(self.prb)
 		self.Rot_diff.set_rotational_diffusion_coefficient(
-         self.Rot_diff.get_rotational_diffusion_coefficient() * rot_diff_scale)
+		 self.Rot_diff.get_rotational_diffusion_coefficient() * rot_diff_scale)
 
-		print("\nRot Diff coef radians2/fs",self.Rot_diff.get_rotational_diffusion_coefficient())
-		print("Trans Diff coef A^2/fs",self.Tran_dif.get_diffusion_coefficient())
-		print("\n")
+		logger.info("\nRot Diff coef radians2/fs"+str(self.Rot_diff.get_rotational_diffusion_coefficient()))
+		logger.info("Trans Diff coef A^2/fs"+str(self.Tran_dif.get_diffusion_coefficient())+"\n")
 		
 		return
 
 	def setup_residues(self, mol_id, residues):
+		"""
+		Sets up residues for the protein.
 
+		This method initializes the residues and configures them with necessary
+		attributes such as mass, diffusion, and color.
+		
+		Args:
+			residues (list): A list of residues to be set up.
+
+		Returns:
+			None
+		"""
 		self.Coarse_Residues = []
 		Temp_Frag=[]
 
@@ -264,7 +409,16 @@ class ProteinStructure:
 		return
 
 	def combine_residues_to_fragment(self, Temp_Frag):
-		
+		"""
+		Combines residues into a single fragment.
+
+		Args:
+			residues (list): A list of residues to be combined into a fragment.
+
+		Returns:
+			None
+		"""
+
 		Mean_xyz = [0,0,0]
 		Total_mass = 0
 		ALL_residx = ""
@@ -296,7 +450,18 @@ class ProteinStructure:
 
 
 	def create_rigid_body_protein_singlemodel(self):
+		"""
+		Creates a rigid body protein for a single model PDB file.
 
+		This method sets up the protein structure from a single model PDB file and
+		configures the necessary components such as residues and rigid bodies.
+		
+		Args:
+			None
+
+		Returns:
+			None
+		"""
 		splittup = os.path.splitext(self.pdbfile)
 		if splittup[1] == ".pdb":
 			protein_hierarchy = IMP.atom.read_pdb(self.pdbfile, self.model)
@@ -345,7 +510,15 @@ class ProteinStructure:
 		return
 
 	def translate_protein_to_center(self, center = [0, 0, 0]):
-		
+		"""
+		Translates the protein to the specified center coordinates.
+
+		Args:
+			center (list, optional): New center coordinates. Default is [0, 0, 0].
+
+		Returns:
+			None
+		"""
 		coords_xyz = []
 		xyzs = set();rbs = set()
 
